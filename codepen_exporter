@@ -1,0 +1,44 @@
+#!/usr/bin/env ruby
+
+require "csv"
+require "json"
+require "pathname"
+
+class CodepenExporter
+  def initialize(path)
+    @path = Pathname(path)
+  end
+
+  def data
+    @data ||= CSV.read(@path, headers: true)
+  end
+
+  def save!(name, ext, contents)
+    return unless contents
+    Pathname("exports").mkpath
+    Pathname("exports/#{name}.#{ext}").write(contents)
+  end
+
+  def call
+    data.each do |row|
+      row = row.to_h
+      if row["title"]
+        name = "#{row["title"]} (#{row["slug_hash"]})".tr("/", " ")
+      else
+        name = "#{row["slug_hash"]}".tr("/", " ")
+      end
+
+      save! name, "html", row.delete("html")
+      save! name, "css", row.delete("css")
+      save! name, "js", row.delete("js")
+      save! name, "json", JSON.pretty_generate(row)
+    end
+  end
+end
+
+unless ARGV.size == 1
+  STDERR.puts "Usage: #{$0} id_Pens.csv"
+  exit 1
+end
+
+CodepenExporter.new(ARGV[0]).call
