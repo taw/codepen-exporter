@@ -13,10 +13,19 @@ class CodepenExporter
     @data ||= CSV.read(@path, headers: true)
   end
 
-  def save!(name, ext, contents)
+  def save!(name, ext, ext2, contents)
     return unless contents
     Pathname("exports").mkpath
-    Pathname("exports/#{name}.#{ext}").write(contents)
+    if ext2 and ext2 != "none"
+      full_ext = "#{ext}.#{ext2}"
+      # Optional, just some nicer aliases
+      full_ext = "jsx" if full_ext == "js.babel"
+      full_ext = "scss" if full_ext == "css.scss"
+      full_ext = "haml" if full_ext == "html.haml"
+      Pathname("exports/#{name}.#{full_ext}").write(contents)
+    else
+      Pathname("exports/#{name}.#{ext}").write(contents)
+    end
   end
 
   def call
@@ -28,10 +37,11 @@ class CodepenExporter
         name = "#{row["slug_hash"]}".tr("/", " ")
       end
 
-      save! name, "html", row.delete("html")
-      save! name, "css", row.delete("css")
-      save! name, "js", row.delete("js")
-      save! name, "json", JSON.pretty_generate(row)
+      save! name, "html", row["html_pre_processor"], row.delete("html")
+      save! name, "css", row["css_pre_processor"], row.delete("css")
+      save! name, "js", row["js_pre_processor"], row.delete("js")
+
+      save! name, "json", nil, JSON.pretty_generate(row)
     end
   end
 end
